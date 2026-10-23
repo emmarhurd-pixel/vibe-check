@@ -13,8 +13,8 @@ export default function ResultsPage({ searchParams }: { searchParams: Params }) 
 }
 
 async function ThemedResults({ searchParams }: { searchParams: Params }) {
-  const { type, name, date, city, venue } = await searchParams;
-const theme = await generateTheme({ type, name, date, city, venue });
+    const { type, name, date, city, venue, style, vibe } = await searchParams;
+const theme = await generateTheme({ type, name, date, city, venue, style, vibe });
 
   return (
     <div

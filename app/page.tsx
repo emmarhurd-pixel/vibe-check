@@ -73,6 +73,25 @@ export default function Home() {
           </div>
         </div>
 
+        <label className="flex flex-col gap-1">
+          <span className="font-medium">Your style</span>
+          <select name="style" className={inputStyle}>
+            <option value="No preference">No preference</option>
+            <option value="Feminine">Feminine</option>
+            <option value="Masculine">Masculine</option>
+            <option value="Androgynous">Androgynous</option>
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="font-medium">Describe your vibe (optional)</span>
+          <input
+            name="vibe"
+            placeholder="e.g. cottagecore, streetwear, all black"
+            className={inputStyle}
+          />
+        </label>
+
         <button
           type="submit"
           className="mt-2 rounded-lg bg-foreground p-3 font-semibold text-background"
