@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { generateTheme } from "../generate-theme";
+import { getWeather } from "../weather";
 
 type Params = Promise<{ [key: string]: string | undefined }>;
 
@@ -14,7 +15,8 @@ export default function ResultsPage({ searchParams }: { searchParams: Params }) 
 
 async function ThemedResults({ searchParams }: { searchParams: Params }) {
     const { type, name, date, city, venue, style, vibe } = await searchParams;
-const theme = await generateTheme({ type, name, date, city, venue, style, vibe });
+    const weather = await getWeather(city, date);
+    const theme = await generateTheme({ type, name, date, city, venue, style, vibe, weather });
 
   return (
     <div
@@ -28,6 +30,19 @@ const theme = await generateTheme({ type, name, date, city, venue, style, vibe }
         <p className="mt-2 opacity-80">
           {type} · {city} · {date} · {venue}
         </p>
+
+           {weather && (
+     <div className="mt-6 rounded-lg border p-4" style={{ borderColor: theme.text }}>
+       <p className="font-semibold">
+         {weather.description}, {weather.high}° / {weather.low}°F
+       </p>
+       <p className="mt-1 text-sm opacity-80">
+         {weather.isForecast
+           ? `Forecast${weather.rainChance != null ? ` · ${weather.rainChance}% chance of rain` : ""}`
+           : "Too far out for a forecast, so this is last year's weather on the same date"}
+       </p>
+     </div>
+   )}
 
         <h2 className="mt-8 text-xl font-semibold">Color palette</h2>
         <div

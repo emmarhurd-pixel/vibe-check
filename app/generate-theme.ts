@@ -1,5 +1,6 @@
 // import { GoogleGenAI, Type } from "@google/genai";
 // import { fonts, defaultTheme, type Theme } from "./themes";
+// import type { Weather } from "./weather";
 
 // const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -11,6 +12,7 @@
 //      venue?: string;
 //      style?: string;
 //      vibe?: string;
+//      weather?: Weather | null;
 //    };
 
 // async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
@@ -23,6 +25,12 @@
 //     }
 //   }
 // }
+
+//    const weatherText = event.weather
+//      ? `${event.weather.description}, high ${event.weather.high}°F, low ${event.weather.low}°F${
+//          event.weather.rainChance != null ? `, ${event.weather.rainChance}% chance of rain` : ""
+//        }`
+//      : "unknown";
 
 // export async function generateTheme(event: EventInfo): Promise<Theme> {
 //   const prompt = `You are a fashion stylist creating an outfit theme for this event:
@@ -93,6 +101,7 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
 import { fonts, defaultTheme, type Theme } from "./themes";
+import type { Weather } from "./weather";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const cache = new Map<string, Theme>();
@@ -105,6 +114,7 @@ type EventInfo = {
   venue?: string;
   style?: string;
   vibe?: string;
+  weather?: Weather | null;
 };
 
 async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
@@ -127,6 +137,12 @@ export async function generateTheme(event: EventInfo): Promise<Theme> {
   const cached = cache.get(cacheKey);
   if (cached) return cached;
 
+   const weatherText = event.weather
+     ? `${event.weather.description}, high ${event.weather.high}°F, low ${event.weather.low}°F${
+         event.weather.rainChance != null ? `, ${event.weather.rainChance}% chance of rain` : ""
+       }`
+     : "unknown";
+
   const prompt = `You are a fashion stylist creating an outfit theme for this event:
 Event type: ${event.type}
 Event name: ${event.name}
@@ -135,6 +151,10 @@ City: ${event.city}
 Venue: ${event.venue}
 Clothing style: ${event.style}
 Personal vibe: ${event.vibe || "none given"}
+
+Weather: ${weatherText}
+If the venue is outdoors, the outfit must suit the weather. If it's indoors,
+still plan for getting there, like a coat or umbrella when needed.
 
 Base the colors and vibe on the event itself, such as a show's set and costume design,
 an artist's or fandom's signature colors, or the occasion's dress code.
