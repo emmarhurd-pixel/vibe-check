@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { pickTheme } from "../themes";
+import { generateTheme } from "../generate-theme";
 
 type Params = Promise<{ [key: string]: string | undefined }>;
 
@@ -14,7 +14,7 @@ export default function ResultsPage({ searchParams }: { searchParams: Params }) 
 
 async function ThemedResults({ searchParams }: { searchParams: Params }) {
   const { type, name, date, city, venue } = await searchParams;
-  const theme = pickTheme(type, name);
+const theme = await generateTheme({ type, name, date, city, venue });
 
   return (
     <div
