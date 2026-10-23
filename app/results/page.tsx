@@ -1,36 +1,60 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { pickTheme } from "../themes";
 
 type Params = Promise<{ [key: string]: string | undefined }>;
 
 export default function ResultsPage({ searchParams }: { searchParams: Params }) {
   return (
-    <main className="mx-auto max-w-md p-6">
-      <Suspense fallback={<p>Loading your look...</p>}>
-        <EventSummary searchParams={searchParams} />
-      </Suspense>
-      <Link href="/" className="mt-8 inline-block underline">
-        ← Start over
-      </Link>
-    </main>
+    <Suspense fallback={<p className="p-6">Loading your look...</p>}>
+      <ThemedResults searchParams={searchParams} />
+    </Suspense>
   );
 }
 
-async function EventSummary({ searchParams }: { searchParams: Params }) {
+async function ThemedResults({ searchParams }: { searchParams: Params }) {
   const { type, name, date, city, venue } = await searchParams;
+  const theme = pickTheme(type, name);
 
   return (
-    <>
-      <h1 className="text-3xl font-bold">{name}</h1>
-      <ul className="mt-4 space-y-1">
-        <li>Type: {type}</li>
-        <li>Date: {date}</li>
-        <li>City: {city}</li>
-        <li>Venue: {venue}</li>
-      </ul>
-      <p className="mt-6 text-gray-500">
-        Color palette and outfit ideas will go here.
-      </p>
-    </>
+    <div
+      className={`min-h-screen ${theme.fontClass}`}
+      style={{ backgroundColor: theme.background, color: theme.text }}
+    >
+      <main className="mx-auto max-w-md p-6">
+        <h1 className="text-4xl font-bold" style={{ color: theme.accent }}>
+          {name}
+        </h1>
+        <p className="mt-2 opacity-80">
+          {type} · {city} · {date} · {venue}
+        </p>
+
+        <h2 className="mt-8 text-xl font-semibold">Color palette</h2>
+        <div
+          className="mt-3 flex overflow-hidden rounded-lg border"
+          style={{ borderColor: theme.text }}
+        >
+          {theme.palette.map((color) => (
+            <div
+              key={color}
+              className="h-16 flex-1"
+              style={{ backgroundColor: color }}
+              title={color}
+            />
+          ))}
+        </div>
+
+        <h2 className="mt-8 text-xl font-semibold">Outfit checklist</h2>
+        <ul className="mt-3 list-disc space-y-1 pl-5">
+          {theme.items.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+
+        <Link href="/" className="mt-10 inline-block underline">
+          ← Start over
+        </Link>
+      </main>
+    </div>
   );
 }
