@@ -15,6 +15,7 @@ export type Theme = {
   palette: string[];
   fontClass: string;
   items: string[];
+  searches: string[];
 };
 
 export const defaultTheme: Theme = {
@@ -29,4 +30,5 @@ export const defaultTheme: Theme = {
     "Comfortable shoes",
     "One statement accessory",
   ],
+  searches: ["minimal neutral outfit", "casual chic street style", "simple everyday outfit"],
 };
