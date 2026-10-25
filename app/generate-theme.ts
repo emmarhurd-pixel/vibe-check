@@ -28,6 +28,57 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
   }
 }
 
+const pieceList = {
+  type: Type.ARRAY,
+  description: "2 to 3 options",
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      name: { type: Type.STRING, description: "Short name of one specific piece, like 'Rust silk camisole'" },
+      color: { type: Type.STRING, description: "The piece's main color as a 6-digit hex code" },
+    },
+    required: ["name", "color"],
+  },
+};
+
+const themeSchema = {
+  type: Type.OBJECT,
+  properties: {
+    background: { type: Type.STRING, description: "Hex color for the page background" },
+    text: { type: Type.STRING, description: "Hex color for body text" },
+    accent: { type: Type.STRING, description: "Hex color for headings" },
+    palette: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Exactly 5 hex colors for the outfit palette",
+    },
+    font: { type: Type.STRING, enum: Object.keys(fonts) },
+    items: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "5 to 7 specific clothing pieces and accessories",
+    },
+    searches: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description:
+        "3 short search terms for full outfit photos matching this look, like 'burgundy slip dress street style'",
+    },
+    wardrobe: {
+      type: Type.OBJECT,
+      properties: {
+        tops: pieceList,
+        bottoms: pieceList,
+        outerwear: pieceList,
+        shoes: pieceList,
+        accessories: pieceList,
+      },
+      required: ["tops", "bottoms", "outerwear", "shoes", "accessories"],
+    },
+  },
+  required: ["background", "text", "accent", "palette", "font", "items", "searches", "wardrobe"],
+};
+
 export async function generateTheme(event: EventInfo): Promise<Theme> {
   if (!event.name) return defaultTheme;
   if (process.env.USE_MOCK_AI === "true") return defaultTheme;
@@ -53,6 +104,8 @@ Personal vibe: ${event.vibe || "none given"}
 Weather: ${weatherText}
 If the venue is outdoors, the outfit must suit the weather. If it's indoors,
 still plan for getting there, like a coat or umbrella when needed.
+The wardrobe options should all mix and match with each other and fit the palette,
+and tops and outerwear should work layered together.
 
 Base the colors and vibe on the event itself, such as a show's set and costume design,
 an artist's or fandom's signature colors, or the occasion's dress code.
@@ -72,32 +125,7 @@ Choose the font that best fits the vibe:
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              background: { type: Type.STRING, description: "Hex color for the page background" },
-              text: { type: Type.STRING, description: "Hex color for body text" },
-              accent: { type: Type.STRING, description: "Hex color for headings" },
-              palette: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "Exactly 5 hex colors for the outfit palette",
-              },
-              font: { type: Type.STRING, enum: Object.keys(fonts) },
-              items: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description: "5 to 7 specific clothing pieces and accessories",
-              },
-              searches: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING },
-                description:
-                  "3 short search terms for full outfit photos matching this look, like 'burgundy slip dress street style'",
-              },
-            },
-            required: ["background", "text", "accent", "palette", "font", "items", "searches"],
-          },
+          responseSchema: themeSchema,
         },
       })
     );
@@ -113,6 +141,7 @@ Choose the font that best fits the vibe:
       fontClass: font.className,
       items: data.items,
       searches: data.searches,
+      wardrobe: data.wardrobe,
     };
 
     cache.set(cacheKey, theme);

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { generateTheme } from "../generate-theme";
 import { getWeather } from "../weather";
 import { getInspoPhotos, pinterestSearchUrl, UNSPLASH_URL } from "../photos";
+import OutfitBuilder from "./OutfitBuilder";
 
 type Params = Promise<{ [key: string]: string | undefined }>;
 
@@ -70,6 +71,12 @@ async function ThemedResults({ searchParams }: { searchParams: Params }) {
             <li key={item}>{item}</li>
           ))}
         </ul>
+           <OutfitBuilder
+                wardrobe={theme.wardrobe}
+                accent={theme.accent}
+                text={theme.text}
+                headingClass={theme.fontClass}
+   />
 
         <h2 className={`mt-8 text-xl font-semibold ${theme.fontClass}`}>Outfit inspo</h2>
 
