@@ -4,22 +4,41 @@ import { generateTheme } from "../generate-theme";
 import { getWeather } from "../weather";
 import { getInspoPhotos, pinterestSearchUrl, UNSPLASH_URL } from "../photos";
 import OutfitBuilder from "./OutfitBuilder";
+import LoadingLook from "./LoadingLook";
 
 type Params = Promise<{ [key: string]: string | undefined }>;
 
 export default function ResultsPage({ searchParams }: { searchParams: Params }) {
   return (
-    <Suspense fallback={<p className="p-6">Loading your look...</p>}>
+    <Suspense fallback={<LoadingLook />}>
       <ThemedResults searchParams={searchParams} />
     </Suspense>
   );
 }
 
 async function ThemedResults({ searchParams }: { searchParams: Params }) {
-  const { type, name, date, city, venue, style, vibe } = await searchParams;
+  const { type, name, date, city, venue, style, vibe, attempt } = await searchParams;
+  const attemptNumber = Number(attempt ?? 0);
+
   const weather = await getWeather(city, date);
-  const theme = await generateTheme({ type, name, date, city, venue, style, vibe, weather });
+  const theme = await generateTheme({
+    type,
+    name,
+    date,
+    city,
+    venue,
+    style,
+    vibe,
+    weather,
+    attempt: attemptNumber,
+  });
   const photos = await getInspoPhotos(theme.searches);
+
+  const nextAttempt = new URLSearchParams();
+  for (const [key, value] of Object.entries({ type, name, date, city, venue, style, vibe })) {
+    if (value) nextAttempt.set(key, value);
+  }
+  nextAttempt.set("attempt", String(attemptNumber + 1));
 
   return (
     <div
@@ -71,12 +90,14 @@ async function ThemedResults({ searchParams }: { searchParams: Params }) {
             <li key={item}>{item}</li>
           ))}
         </ul>
-           <OutfitBuilder
-                wardrobe={theme.wardrobe}
-                accent={theme.accent}
-                text={theme.text}
-                headingClass={theme.fontClass}
-   />
+
+        <OutfitBuilder
+          key={`${name}-${attemptNumber}`}
+          wardrobe={theme.wardrobe}
+          accent={theme.accent}
+          text={theme.text}
+          headingClass={theme.fontClass}
+        />
 
         <h2 className={`mt-8 text-xl font-semibold ${theme.fontClass}`}>Outfit inspo</h2>
 
@@ -123,9 +144,18 @@ async function ThemedResults({ searchParams }: { searchParams: Params }) {
           </div>
         </div>
 
-        <Link href="/" className="mt-10 inline-block underline">
-          ← Start over
-        </Link>
+        <div className="mt-10 flex flex-wrap items-center gap-4">
+          <Link
+            href={`/results?${nextAttempt}`}
+            className="rounded-full border-2 px-4 py-2 font-medium"
+            style={{ borderColor: theme.accent, color: theme.accent }}
+          >
+            ↻ Try a different look
+          </Link>
+          <Link href="/" className="underline">
+            ← Start over
+          </Link>
+        </div>
       </main>
     </div>
   );

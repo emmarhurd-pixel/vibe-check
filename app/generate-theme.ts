@@ -14,6 +14,7 @@ type EventInfo = {
   style?: string;
   vibe?: string;
   weather?: Weather | null;
+  attempt?: number;
 };
 
 async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
@@ -93,6 +94,10 @@ export async function generateTheme(event: EventInfo): Promise<Theme> {
       }`
     : "unknown";
 
+  const attemptText = event.attempt
+    ? `This is attempt #${event.attempt + 1}. Give a noticeably different take, with a new palette and different pieces.`
+    : "";
+
   const prompt = `You are a fashion stylist creating an outfit theme for this event:
 Event type: ${event.type}
 Event name: ${event.name}
@@ -102,6 +107,7 @@ Venue: ${event.venue}
 Clothing style: ${event.style}
 Personal vibe: ${event.vibe || "none given"}
 Weather: ${weatherText}
+${attemptText}
 If the venue is outdoors, the outfit must suit the weather. If it's indoors,
 still plan for getting there, like a coat or umbrella when needed.
 The wardrobe options should all mix and match with each other and fit the palette,

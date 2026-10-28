@@ -1,0 +1,1 @@
+export const brandColors = ["#F4A261", "#E76F51", "#2A9D8F", "#E9C46A", "#264653"];
