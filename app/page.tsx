@@ -1,4 +1,5 @@
 import Form from "next/form";
+import Link from "next/link";
 
 const eventTypes = [
   "Concert",
@@ -98,7 +99,10 @@ export default function Home() {
         >
           Build my look
         </button>
-      </Form>
+         </Form>
+        <Link href="/outfits" className="mt-6 inline-block text-sm underline">
+          My saved outfits →
+      </Link>
     </main>
   );
 }

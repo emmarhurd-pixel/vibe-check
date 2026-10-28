@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { Piece, Wardrobe } from "../themes";
+import { saveOutfit } from "../saved-outfits";
 
 type Slot = { key: keyof Wardrobe; label: string; multiple: boolean };
 
@@ -17,17 +19,21 @@ type Props = {
   wardrobe: Wardrobe;
   accent: string;
   text: string;
+  background: string;
   headingClass: string;
+  event: { name: string; type: string; date: string; city: string };
 };
 
 function pinterestSearchUrl(query: string) {
   return `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(query)}`;
 }
 
-export default function OutfitBuilder({ wardrobe, accent, text, headingClass }: Props) {
+export default function OutfitBuilder({ wardrobe, accent, text, background, headingClass, event }: Props) {
   const [picked, setPicked] = useState<Record<string, string[]>>({});
+  const [saved, setSaved] = useState(false);
 
   function toggle(slot: Slot, name: string) {
+    setSaved(false);
     setPicked((current) => {
       const chosen = current[slot.key] ?? [];
       let next: string[];
@@ -40,9 +46,28 @@ export default function OutfitBuilder({ wardrobe, accent, text, headingClass }: 
     });
   }
 
+  function clear() {
+    setPicked({});
+    setSaved(false);
+  }
+
   const outfit: Piece[] = slots.flatMap((slot) =>
     (wardrobe[slot.key] ?? []).filter((piece) => picked[slot.key]?.includes(piece.name))
   );
+
+  async function handleSave() {
+    await saveOutfit({
+      eventName: event.name,
+      eventType: event.type,
+      date: event.date,
+      city: event.city,
+      accent,
+      background,
+      text,
+      pieces: outfit,
+    });
+    setSaved(true);
+  }
 
   const faintBorder = `color-mix(in srgb, ${text} 25%, transparent)`;
 
@@ -115,9 +140,25 @@ export default function OutfitBuilder({ wardrobe, accent, text, headingClass }: 
                 </li>
               ))}
             </ul>
-            <button type="button" onClick={() => setPicked({})} className="mt-4 text-sm underline">
-              Clear outfit
-            </button>
+            <div className="mt-4 flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saved}
+                className="rounded-full px-4 py-2 text-sm font-semibold"
+                style={{ backgroundColor: accent, color: background }}
+              >
+                {saved ? "Saved ✓" : "Save outfit"}
+              </button>
+              {saved && (
+                <Link href="/outfits" className="text-sm underline">
+                  View my outfits →
+                </Link>
+              )}
+              <button type="button" onClick={clear} className="text-sm underline">
+                Clear outfit
+              </button>
+            </div>
           </>
         )}
       </div>

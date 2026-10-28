@@ -96,7 +96,9 @@ async function ThemedResults({ searchParams }: { searchParams: Params }) {
           wardrobe={theme.wardrobe}
           accent={theme.accent}
           text={theme.text}
+          background={theme.background}
           headingClass={theme.fontClass}
+          event={{ name: name ?? "", type: type ?? "", date: date ?? "", city: city ?? "" }}
         />
 
         <h2 className={`mt-8 text-xl font-semibold ${theme.fontClass}`}>Outfit inspo</h2>
