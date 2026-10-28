@@ -2,25 +2,55 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { supabase } from "../supabase";
 import { deleteOutfit, getOutfits, type SavedOutfit } from "../saved-outfits";
-
 
 export default function OutfitsPage() {
   const [outfits, setOutfits] = useState<SavedOutfit[] | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setEmail(data.session?.user.email ?? null);
+    });
     getOutfits().then(setOutfits);
   }, []);
 
   async function handleDelete(id: string) {
-    await deleteOutfit(id);
+    try {
+      await deleteOutfit(id);
+      setOutfits(await getOutfits());
+    } catch (error) {
+      console.error(error);
+      window.alert("Couldn't delete that outfit. Please try again.");
+    }
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    setEmail(null);
     setOutfits(await getOutfits());
   }
 
   return (
     <main className="mx-auto max-w-md p-6">
       <h1 className="text-3xl font-bold">My outfits</h1>
-      <p className="mt-2 text-sm text-gray-500">Saved on this device.</p>
+
+      {email ? (
+        <p className="mt-2 text-sm text-gray-500">
+          Saved to your account ({email}) ·{" "}
+          <button type="button" onClick={handleSignOut} className="underline">
+            Sign out
+          </button>
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-gray-500">
+          Saved on this device ·{" "}
+          <Link href="/login" className="underline">
+            Sign in to save across devices
+          </Link>
+        </p>
+      )}
 
       {outfits === null ? (
         <p className="mt-8">Loading...</p>
