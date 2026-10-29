@@ -22,14 +22,23 @@ type Props = {
   text: string;
   background: string;
   headingClass: string;
-  event: { name: string; type: string; date: string; city: string };
+  event: {
+    name: string;
+    type: string;
+    date: string;
+    city: string;
+    venue: string;
+    style: string;
+    vibe: string;
+  };
+  look: { palette: string[]; items: string[]; searches: string[] };
 };
 
 function pinterestSearchUrl(query: string) {
   return `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(query)}`;
 }
 
-export default function OutfitBuilder({ wardrobe, accent, text, background, headingClass, event }: Props) {
+export default function OutfitBuilder({ wardrobe, accent, text, background, headingClass, event, look }: Props) {
   const [picked, setPicked] = useState<Record<string, string[]>>({});
   const [saved, setSaved] = useState(false);
 
@@ -58,17 +67,28 @@ export default function OutfitBuilder({ wardrobe, accent, text, background, head
   const outfitColors = sortPiecesLightToDark(outfit);
 
   async function handleSave() {
-    await saveOutfit({
-      eventName: event.name,
-      eventType: event.type,
-      date: event.date,
-      city: event.city,
-      accent,
-      background,
-      text,
-      pieces: outfit,
-    });
-    setSaved(true);
+    try {
+      await saveOutfit({
+        eventName: event.name,
+        eventType: event.type,
+        date: event.date,
+        city: event.city,
+        venue: event.venue,
+        style: event.style,
+        vibe: event.vibe,
+        accent,
+        background,
+        text,
+        pieces: outfit,
+        palette: look.palette,
+        items: look.items,
+        searches: look.searches,
+      });
+      setSaved(true);
+    } catch (error) {
+      console.error(error);
+      window.alert("Couldn't save that outfit. Please try again.");
+    }
   }
 
   const faintBorder = `color-mix(in srgb, ${text} 25%, transparent)`;

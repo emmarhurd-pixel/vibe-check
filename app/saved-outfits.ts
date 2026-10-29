@@ -8,13 +8,19 @@ export type SavedOutfit = {
   eventType: string;
   date: string;
   city: string;
+  venue: string;
+  style: string;
+  vibe: string;
   accent: string;
   background: string;
   text: string;
   pieces: Piece[];
+  palette: string[];
+  items: string[];
+  searches: string[];
 };
 
-type NewOutfit = Omit<SavedOutfit, "id" | "savedAt">;
+export type NewOutfit = Omit<SavedOutfit, "id" | "savedAt">;
 
 type OutfitRow = {
   id: string;
@@ -23,20 +29,47 @@ type OutfitRow = {
   event_type: string | null;
   date: string | null;
   city: string | null;
+  venue: string | null;
+  style: string | null;
+  vibe: string | null;
   accent: string | null;
   background: string | null;
   text_color: string | null;
-  pieces: Piece[];
+  pieces: Piece[] | null;
+  palette: string[] | null;
+  items: string[] | null;
+  searches: string[] | null;
 };
 
 // ---------- Device storage ----------
 
 const STORAGE_KEY = "saved-outfits";
 
+function fillMissing(outfit: Partial<SavedOutfit> & { id: string; savedAt: string }): SavedOutfit {
+  return {
+    id: outfit.id,
+    savedAt: outfit.savedAt,
+    eventName: outfit.eventName ?? "",
+    eventType: outfit.eventType ?? "",
+    date: outfit.date ?? "",
+    city: outfit.city ?? "",
+    venue: outfit.venue ?? "",
+    style: outfit.style ?? "",
+    vibe: outfit.vibe ?? "",
+    accent: outfit.accent ?? "#000000",
+    background: outfit.background ?? "#FFFFFF",
+    text: outfit.text ?? "#000000",
+    pieces: outfit.pieces ?? [],
+    palette: outfit.palette ?? [],
+    items: outfit.items ?? [],
+    searches: outfit.searches ?? [],
+  };
+}
+
 function readDevice(): SavedOutfit[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    return raw ? JSON.parse(raw).map(fillMissing) : [];
   } catch {
     return [];
   }
@@ -67,26 +100,38 @@ function toRow(outfit: NewOutfit) {
     event_type: outfit.eventType,
     date: outfit.date,
     city: outfit.city,
+    venue: outfit.venue,
+    style: outfit.style,
+    vibe: outfit.vibe,
     accent: outfit.accent,
     background: outfit.background,
     text_color: outfit.text,
     pieces: outfit.pieces,
+    palette: outfit.palette,
+    items: outfit.items,
+    searches: outfit.searches,
   };
 }
 
 function fromRow(row: OutfitRow): SavedOutfit {
-  return {
+  return fillMissing({
     id: row.id,
     savedAt: row.saved_at,
     eventName: row.event_name,
-    eventType: row.event_type ?? "",
-    date: row.date ?? "",
-    city: row.city ?? "",
-    accent: row.accent ?? "#000000",
-    background: row.background ?? "#FFFFFF",
-    text: row.text_color ?? "#000000",
-    pieces: row.pieces ?? [],
-  };
+    eventType: row.event_type ?? undefined,
+    date: row.date ?? undefined,
+    city: row.city ?? undefined,
+    venue: row.venue ?? undefined,
+    style: row.style ?? undefined,
+    vibe: row.vibe ?? undefined,
+    accent: row.accent ?? undefined,
+    background: row.background ?? undefined,
+    text: row.text_color ?? undefined,
+    pieces: row.pieces ?? undefined,
+    palette: row.palette ?? undefined,
+    items: row.items ?? undefined,
+    searches: row.searches ?? undefined,
+  });
 }
 
 // ---------- What the rest of the app uses ----------
@@ -104,6 +149,16 @@ export async function getOutfits(): Promise<SavedOutfit[]> {
     return [];
   }
   return (data as OutfitRow[]).map(fromRow);
+}
+
+export async function getOutfit(id: string): Promise<SavedOutfit | null> {
+  if (!(await currentUserId())) {
+    return readDevice().find((outfit) => outfit.id === id) ?? null;
+  }
+
+  const { data, error } = await supabase.from("outfits").select("*").eq("id", id).maybeSingle();
+  if (error || !data) return null;
+  return fromRow(data as OutfitRow);
 }
 
 export async function saveOutfit(outfit: NewOutfit): Promise<void> {

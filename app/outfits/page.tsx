@@ -65,27 +65,32 @@ export default function OutfitsPage() {
               className="rounded-xl p-4"
               style={{ backgroundColor: outfit.background, color: outfit.text }}
             >
-              <h2 className="text-xl font-bold" style={{ color: outfit.accent }}>
-                {outfit.eventName}
-              </h2>
-              <p className="text-sm opacity-80">
-                {outfit.eventType} · {outfit.city} · {formatDate(outfit.date)}
-              </p>
-              <div className="mt-3 flex h-8 overflow-hidden rounded-md">
-                {sortPiecesLightToDark(outfit.pieces).map((piece) => (
-                  <div
-                    key={piece.name}
-                    className="flex-1"
-                    style={{ backgroundColor: piece.color }}
-                    title={piece.name}
-                  />
-                ))}
-              </div>
-              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">
-                {outfit.pieces.map((piece) => (
-                  <li key={piece.name}>{piece.name}</li>
-                ))}
-              </ul>
+              <Link href={`/outfits/${outfit.id}`} className="block">
+                <h2 className="text-xl font-bold" style={{ color: outfit.accent }}>
+                  {outfit.eventName}
+                </h2>
+                <p className="text-sm opacity-80">
+                  {outfit.eventType} · {outfit.city} · {formatDate(outfit.date)}
+                </p>
+                <div className="mt-3 flex h-8 overflow-hidden rounded-md">
+                  {sortPiecesLightToDark(outfit.pieces).map((piece) => (
+                    <div
+                      key={piece.name}
+                      className="flex-1"
+                      style={{ backgroundColor: piece.color }}
+                      title={piece.name}
+                    />
+                  ))}
+                </div>
+                <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">
+                  {outfit.pieces.map((piece) => (
+                    <li key={piece.name}>{piece.name}</li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-sm font-semibold" style={{ color: outfit.accent }}>
+                  Open look →
+                </p>
+              </Link>
               <button
                 type="button"
                 onClick={() => handleDelete(outfit.id)}
