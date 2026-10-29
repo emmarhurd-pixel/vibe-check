@@ -1,9 +1,11 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
 import { fonts, defaultTheme, type Theme } from "./themes";
 import type { Weather } from "./weather";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const cache = new Map<string, Theme>();
+
+const TIME_LIMIT_MS = 20000;
 
 type EventInfo = {
   type?: string;
@@ -17,14 +19,23 @@ type EventInfo = {
   attempt?: number;
 };
 
-async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`AI took longer than ${ms / 1000} seconds`)), ms)
+    ),
+  ]);
+}
+
+async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
   for (let i = 1; ; i++) {
     try {
       return await fn();
     } catch (error) {
       const status = (error as { status?: number }).status;
       if (status !== 503 || i >= attempts) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 1000 * i));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 }
@@ -126,14 +137,18 @@ Choose the font that best fits the vibe:
 
   try {
     const response = await withRetry(() =>
-      ai.models.generateContent({
-        model: "gemini-3.8-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: themeSchema,
-        },
-      })
+      withTimeout(
+        ai.models.generateContent({
+          model: "gemini-3.8-flash",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: themeSchema,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          },
+        }),
+        TIME_LIMIT_MS
+      )
     );
 
     const data = JSON.parse(response.text ?? "");

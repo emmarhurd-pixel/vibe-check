@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Piece, Wardrobe } from "../themes";
 import { saveOutfit } from "../saved-outfits";
+import { sortPiecesLightToDark } from "../format";
 
 type Slot = { key: keyof Wardrobe; label: string; multiple: boolean };
 
@@ -54,6 +55,7 @@ export default function OutfitBuilder({ wardrobe, accent, text, background, head
   const outfit: Piece[] = slots.flatMap((slot) =>
     (wardrobe[slot.key] ?? []).filter((piece) => picked[slot.key]?.includes(piece.name))
   );
+  const outfitColors = sortPiecesLightToDark(outfit);
 
   async function handleSave() {
     await saveOutfit({
@@ -115,7 +117,7 @@ export default function OutfitBuilder({ wardrobe, accent, text, background, head
         ) : (
           <>
             <div className="mt-3 flex h-10 overflow-hidden rounded-md">
-              {outfit.map((piece) => (
+              {outfitColors.map((piece) => (
                 <div
                   key={piece.name}
                   className="flex-1"

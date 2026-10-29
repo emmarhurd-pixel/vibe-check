@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "../supabase";
 import { deleteOutfit, getOutfits, type SavedOutfit } from "../saved-outfits";
+import { formatDate, sortPiecesLightToDark } from "../format";
 
 export default function OutfitsPage() {
   const [outfits, setOutfits] = useState<SavedOutfit[] | null>(null);
@@ -68,10 +69,10 @@ export default function OutfitsPage() {
                 {outfit.eventName}
               </h2>
               <p className="text-sm opacity-80">
-                {outfit.eventType} · {outfit.city} · {outfit.date}
+                {outfit.eventType} · {outfit.city} · {formatDate(outfit.date)}
               </p>
               <div className="mt-3 flex h-8 overflow-hidden rounded-md">
-                {outfit.pieces.map((piece) => (
+                {sortPiecesLightToDark(outfit.pieces).map((piece) => (
                   <div
                     key={piece.name}
                     className="flex-1"

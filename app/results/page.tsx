@@ -3,6 +3,7 @@ import Link from "next/link";
 import { generateTheme } from "../generate-theme";
 import { getWeather } from "../weather";
 import { getInspoPhotos, pinterestSearchUrl, UNSPLASH_URL } from "../photos";
+import { formatDate, sortLightToDark } from "../format";
 import OutfitBuilder from "./OutfitBuilder";
 import LoadingLook from "./LoadingLook";
 
@@ -33,6 +34,7 @@ async function ThemedResults({ searchParams }: { searchParams: Params }) {
     attempt: attemptNumber,
   });
   const photos = await getInspoPhotos(theme.searches);
+  const palette = sortLightToDark(theme.palette);
 
   const nextAttempt = new URLSearchParams();
   for (const [key, value] of Object.entries({ type, name, date, city, venue, style, vibe })) {
@@ -53,7 +55,7 @@ async function ThemedResults({ searchParams }: { searchParams: Params }) {
           {name}
         </h1>
         <p className="mt-2 opacity-80">
-          {type} · {city} · {date} · {venue}
+          {type} · {city} · {formatDate(date)} · {venue}
         </p>
 
         {weather && (
@@ -74,13 +76,20 @@ async function ThemedResults({ searchParams }: { searchParams: Params }) {
           className="mt-3 flex overflow-hidden rounded-lg border"
           style={{ borderColor: theme.text }}
         >
-          {theme.palette.map((color) => (
+          {palette.map((color) => (
             <div
               key={color}
               className="h-16 flex-1"
               style={{ backgroundColor: color }}
               title={color}
             />
+          ))}
+        </div>
+        <div className="mt-1 flex">
+          {palette.map((color) => (
+            <span key={color} className="flex-1 text-center text-[10px] uppercase opacity-70">
+              {color}
+            </span>
           ))}
         </div>
 
