@@ -1,11 +1,13 @@
 import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
-import { fonts, defaultTheme, type Theme } from "./themes";
+import { fonts, defaultTheme, type Theme, type Wardrobe } from "./themes";
 import type { Weather } from "./weather";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const cache = new Map<string, Theme>();
-
+const GROQ_MODEL = "openai/gpt-oss-120b";
+const GEMINI_MODEL = "gemini-3.8-flash";
 const TIME_LIMIT_MS = 20000;
+
+const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const cache = new Map<string, Theme>();
 
 type EventInfo = {
   type?: string;
@@ -19,86 +21,20 @@ type EventInfo = {
   attempt?: number;
 };
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`AI took longer than ${ms / 1000} seconds`)), ms)
-    ),
-  ]);
-}
-
-async function withRetry<T>(fn: () => Promise<T>, attempts = 2): Promise<T> {
-  for (let i = 1; ; i++) {
-    try {
-      return await fn();
-    } catch (error) {
-      const status = (error as { status?: number }).status;
-      if (status !== 503 || i >= attempts) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-  }
-}
-
-const pieceList = {
-  type: Type.ARRAY,
-  description: "2 to 3 options",
-  items: {
-    type: Type.OBJECT,
-    properties: {
-      name: { type: Type.STRING, description: "Short name of one specific piece, like 'Rust silk camisole'" },
-      color: { type: Type.STRING, description: "The piece's main color as a 6-digit hex code" },
-    },
-    required: ["name", "color"],
-  },
+type RawTheme = {
+  background: string;
+  text: string;
+  accent: string;
+  palette: string[];
+  font: string;
+  items: string[];
+  searches: string[];
+  wardrobe: Wardrobe;
 };
 
-const themeSchema = {
-  type: Type.OBJECT,
-  properties: {
-    background: { type: Type.STRING, description: "Hex color for the page background" },
-    text: { type: Type.STRING, description: "Hex color for body text" },
-    accent: { type: Type.STRING, description: "Hex color for headings" },
-    palette: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: "Exactly 5 hex colors for the outfit palette",
-    },
-    font: { type: Type.STRING, enum: Object.keys(fonts) },
-    items: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: "5 to 7 specific clothing pieces and accessories",
-    },
-    searches: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description:
-        "3 short search terms for full outfit photos matching this look, like 'burgundy slip dress street style'",
-    },
-    wardrobe: {
-      type: Type.OBJECT,
-      properties: {
-        tops: pieceList,
-        bottoms: pieceList,
-        outerwear: pieceList,
-        shoes: pieceList,
-        accessories: pieceList,
-      },
-      required: ["tops", "bottoms", "outerwear", "shoes", "accessories"],
-    },
-  },
-  required: ["background", "text", "accent", "palette", "font", "items", "searches", "wardrobe"],
-};
+// ---------- The prompt (shared by both AI services) ----------
 
-export async function generateTheme(event: EventInfo): Promise<Theme> {
-  if (!event.name) return defaultTheme;
-  if (process.env.USE_MOCK_AI === "true") return defaultTheme;
-
-  const cacheKey = JSON.stringify(event);
-  const cached = cache.get(cacheKey);
-  if (cached) return cached;
-
+function buildPrompt(event: EventInfo): string {
   const weatherText = event.weather
     ? `${event.weather.description}, high ${event.weather.high}°F, low ${event.weather.low}°F${
         event.weather.rainChance != null ? `, ${event.weather.rainChance}% chance of rain` : ""
@@ -109,7 +45,7 @@ export async function generateTheme(event: EventInfo): Promise<Theme> {
     ? `This is attempt #${event.attempt + 1}. Give a noticeably different take, with a new palette and different pieces.`
     : "";
 
-  const prompt = `You are a fashion stylist creating an outfit theme for this event:
+  return `You are a fashion stylist creating an outfit theme for this event:
 Event type: ${event.type}
 Event name: ${event.name}
 Date: ${event.date}
@@ -127,48 +63,213 @@ and tops and outerwear should work layered together.
 Base the colors and vibe on the event itself, such as a show's set and costume design,
 an artist's or fandom's signature colors, or the occasion's dress code.
 The text color must be easy to read on the background color.
+All colors must be 6-digit hex codes like #A1B2C3.
 
-Choose the font that best fits the vibe:
-- inter: clean, modern, minimal
-- playfair: elegant, romantic, theatrical
-- spaceGrotesk: edgy, bold, techy, concert energy
-- cinzel: classical, regal, dramatic, mythological
-- quicksand: soft, cute, playful`;
+Return:
+- background, text, accent: hex colors for the page
+- palette: exactly 5 hex colors for the outfit palette
+- font: the font that best fits the vibe, one of:
+  inter (clean, modern, minimal), playfair (elegant, romantic, theatrical),
+  spaceGrotesk (edgy, bold, techy, concert energy), cinzel (classical, regal, dramatic, mythological),
+  quicksand (soft, cute, playful)
+- items: 5 to 7 specific clothing pieces and accessories
+- searches: 3 short search terms for full outfit photos, like "burgundy slip dress street style"
+- wardrobe: 2 to 3 options each for tops, bottoms, outerwear, shoes, and accessories,
+  each with a short name like "Rust silk camisole" and its main color as a hex code`;
+}
 
-  try {
-    const response = await withRetry(() =>
-      withTimeout(
-        ai.models.generateContent({
-          model: "gemini-3.8-flash",
-          contents: prompt,
-          config: {
-            responseMimeType: "application/json",
-            responseSchema: themeSchema,
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          },
-        }),
-        TIME_LIMIT_MS
-      )
-    );
+// ---------- Checking the AI's answer ----------
 
-    const data = JSON.parse(response.text ?? "");
-    const font = fonts[data.font as keyof typeof fonts] ?? fonts.inter;
+const HEX = /^#[0-9a-fA-F]{6}$/;
+const SLOTS: (keyof Wardrobe)[] = ["tops", "bottoms", "outerwear", "shoes", "accessories"];
 
-    const theme: Theme = {
-      background: data.background,
-      text: data.text,
-      accent: data.accent,
-      palette: data.palette,
-      fontClass: font.className,
-      items: data.items,
-      searches: data.searches,
-      wardrobe: data.wardrobe,
-    };
+function toTheme(data: unknown): Theme {
+  const raw = data as RawTheme;
+  const valid =
+    raw &&
+    HEX.test(raw.background) &&
+    HEX.test(raw.text) &&
+    HEX.test(raw.accent) &&
+    Array.isArray(raw.palette) &&
+    Array.isArray(raw.items) &&
+    Array.isArray(raw.searches) &&
+    raw.wardrobe &&
+    SLOTS.every((slot) => Array.isArray(raw.wardrobe[slot]));
 
-    cache.set(cacheKey, theme);
-    return theme;
-  } catch (error) {
-    console.error("Theme generation failed:", error);
-    return defaultTheme;
+  if (!valid) throw new Error("AI answer was missing pieces of the theme");
+
+  const font = fonts[raw.font as keyof typeof fonts] ?? fonts.inter;
+
+  return {
+    background: raw.background,
+    text: raw.text,
+    accent: raw.accent,
+    palette: raw.palette.filter((color) => HEX.test(color)),
+    fontClass: font.className,
+    items: raw.items,
+    searches: raw.searches,
+    wardrobe: raw.wardrobe,
+  };
+}
+
+// ---------- Groq ----------
+
+const pieceJson = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      name: { type: "string" },
+      color: { type: "string" },
+    },
+    required: ["name", "color"],
+    additionalProperties: false,
+  },
+};
+
+const groqSchema = {
+  type: "object",
+  properties: {
+    background: { type: "string" },
+    text: { type: "string" },
+    accent: { type: "string" },
+    palette: { type: "array", items: { type: "string" } },
+    font: { type: "string", enum: Object.keys(fonts) },
+    items: { type: "array", items: { type: "string" } },
+    searches: { type: "array", items: { type: "string" } },
+    wardrobe: {
+      type: "object",
+      properties: {
+        tops: pieceJson,
+        bottoms: pieceJson,
+        outerwear: pieceJson,
+        shoes: pieceJson,
+        accessories: pieceJson,
+      },
+      required: ["tops", "bottoms", "outerwear", "shoes", "accessories"],
+      additionalProperties: false,
+    },
+  },
+  required: ["background", "text", "accent", "palette", "font", "items", "searches", "wardrobe"],
+  additionalProperties: false,
+};
+
+async function askGroq(prompt: string): Promise<unknown> {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      reasoning_effort: "low",
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "outfit_theme", strict: true, schema: groqSchema },
+      },
+    }),
+    signal: AbortSignal.timeout(TIME_LIMIT_MS),
+  });
+
+  if (!res.ok) throw new Error(`Groq error ${res.status}: ${await res.text()}`);
+
+  const data = await res.json();
+  return JSON.parse(data.choices[0].message.content);
+}
+
+// ---------- Gemini ----------
+
+const pieceList = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      name: { type: Type.STRING },
+      color: { type: Type.STRING },
+    },
+    required: ["name", "color"],
+  },
+};
+
+const geminiSchema = {
+  type: Type.OBJECT,
+  properties: {
+    background: { type: Type.STRING },
+    text: { type: Type.STRING },
+    accent: { type: Type.STRING },
+    palette: { type: Type.ARRAY, items: { type: Type.STRING } },
+    font: { type: Type.STRING, enum: Object.keys(fonts) },
+    items: { type: Type.ARRAY, items: { type: Type.STRING } },
+    searches: { type: Type.ARRAY, items: { type: Type.STRING } },
+    wardrobe: {
+      type: Type.OBJECT,
+      properties: {
+        tops: pieceList,
+        bottoms: pieceList,
+        outerwear: pieceList,
+        shoes: pieceList,
+        accessories: pieceList,
+      },
+      required: ["tops", "bottoms", "outerwear", "shoes", "accessories"],
+    },
+  },
+  required: ["background", "text", "accent", "palette", "font", "items", "searches", "wardrobe"],
+};
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`AI took longer than ${ms / 1000} seconds`)), ms)
+    ),
+  ]);
+}
+
+async function askGemini(prompt: string): Promise<unknown> {
+  const response = await withTimeout(
+    gemini.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: geminiSchema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      },
+    }),
+    TIME_LIMIT_MS
+  );
+  return JSON.parse(response.text ?? "");
+}
+
+// ---------- What the rest of the app uses ----------
+
+export async function generateTheme(event: EventInfo): Promise<Theme> {
+  if (!event.name) return defaultTheme;
+  if (process.env.USE_MOCK_AI === "true") return defaultTheme;
+
+  const cacheKey = JSON.stringify(event);
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
+
+  const prompt = buildPrompt(event);
+
+  const services: { name: string; ask: (prompt: string) => Promise<unknown> }[] = [];
+  if (process.env.GROQ_API_KEY) services.push({ name: "Groq", ask: askGroq });
+  if (process.env.GEMINI_API_KEY) services.push({ name: "Gemini", ask: askGemini });
+
+  for (const service of services) {
+    try {
+      const started = Date.now();
+      const theme = toTheme(await service.ask(prompt));
+      console.log(`Theme from ${service.name} in ${((Date.now() - started) / 1000).toFixed(1)}s`);
+      cache.set(cacheKey, theme);
+      return theme;
+    } catch (error) {
+      console.error(`${service.name} failed:`, error);
+    }
   }
+
+  return defaultTheme;
 }
