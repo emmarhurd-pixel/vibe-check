@@ -1,6 +1,7 @@
 import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
 import { fonts, defaultTheme, type Theme, type Wardrobe } from "./themes";
 import type { Weather } from "./weather";
+import { fixWardrobe } from "./color-names";
 
 const GROQ_MODEL = "openai/gpt-oss-120b";
 const GEMINI_MODEL = "gemini-3.8-flash";
@@ -64,6 +65,7 @@ Base the colors and vibe on the event itself, such as a show's set and costume d
 an artist's or fandom's signature colors, or the occasion's dress code.
 The text color must be easy to read on the background color.
 All colors must be 6-digit hex codes like #A1B2C3.
+Each wardrobe piece's hex must match the color in its name. A "sage green" piece needs a sage green hex, never a blue one.
 
 Return:
 - background, text, accent: hex colors for the page
@@ -108,7 +110,7 @@ function toTheme(data: unknown): Theme {
     fontClass: font.className,
     items: raw.items,
     searches: raw.searches,
-    wardrobe: raw.wardrobe,
+    wardrobe: fixWardrobe(raw.wardrobe),
   };
 }
 
