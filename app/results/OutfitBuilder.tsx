@@ -5,7 +5,6 @@ import Link from "next/link";
 import type { Piece, Wardrobe } from "../themes";
 import { saveOutfit } from "../saved-outfits";
 import { uniquePieceColors } from "../format";
-import OutfitPreview from "../OutfitPreview";
 
 type Slot = { key: keyof Wardrobe; label: string; multiple: boolean };
 
@@ -139,9 +138,6 @@ export default function OutfitBuilder({ wardrobe, accent, text, background, head
           <p className="mt-2 text-sm opacity-80">Nothing picked yet.</p>
         ) : (
           <>
-            <div className="mt-4">
-              <OutfitPreview pieces={outfit} outline={text} />
-            </div>
             <div className="mt-4 flex h-10 overflow-hidden rounded-md">
               {colorGroups.map((group) => (
                 <div

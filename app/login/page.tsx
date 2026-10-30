@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../supabase";
 import { countDeviceOutfits, moveDeviceOutfitsToAccount } from "../saved-outfits";
+import { countDeviceCloset, moveDeviceClosetToAccount } from "../closet";
 
 const inputStyle = "rounded-lg border border-gray-400 bg-transparent p-3";
 
@@ -39,18 +40,22 @@ export default function LoginPage() {
       return;
     }
 
-    const count = countDeviceOutfits();
-    if (
-      count > 0 &&
-      window.confirm(
-        `Move the ${count} outfit${count === 1 ? "" : "s"} saved on this device into your account?`
-      )
-    ) {
-      try {
-        await moveDeviceOutfitsToAccount();
-      } catch (moveError) {
-        console.error(moveError);
-        window.alert("Some outfits couldn't be moved. They're still saved on this device.");
+    const outfitCount = countDeviceOutfits();
+    const closetCount = countDeviceCloset();
+
+    if (outfitCount + closetCount > 0) {
+      const parts: string[] = [];
+      if (outfitCount > 0) parts.push(`${outfitCount} outfit${outfitCount === 1 ? "" : "s"}`);
+      if (closetCount > 0) parts.push(`${closetCount} closet piece${closetCount === 1 ? "" : "s"}`);
+
+      if (window.confirm(`Move the ${parts.join(" and ")} saved on this device into your account?`)) {
+        try {
+          await moveDeviceOutfitsToAccount();
+          await moveDeviceClosetToAccount();
+        } catch (moveError) {
+          console.error(moveError);
+          window.alert("Some items couldn't be moved. They're still saved on this device.");
+        }
       }
     }
 
@@ -63,7 +68,7 @@ export default function LoginPage() {
         {mode === "signin" ? "Sign in" : "Create an account"}
       </h1>
       <p className="mt-2 text-sm text-gray-500">
-        Save your outfits to your account and see them on any device.
+        Save your outfits and closet to your account and see them on any device.
       </p>
 
       <form onSubmit={handleSubmit} className="mt-8 flex flex-col gap-4">
