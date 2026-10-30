@@ -4,7 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Piece, Wardrobe } from "../themes";
 import { saveOutfit } from "../saved-outfits";
-import { sortPiecesLightToDark } from "../format";
+import { uniquePieceColors } from "../format";
+import OutfitPreview from "../OutfitPreview";
 
 type Slot = { key: keyof Wardrobe; label: string; multiple: boolean };
 
@@ -62,9 +63,11 @@ export default function OutfitBuilder({ wardrobe, accent, text, background, head
   }
 
   const outfit: Piece[] = slots.flatMap((slot) =>
-    (wardrobe[slot.key] ?? []).filter((piece) => picked[slot.key]?.includes(piece.name))
+    (wardrobe[slot.key] ?? [])
+      .filter((piece) => picked[slot.key]?.includes(piece.name))
+      .map((piece) => ({ ...piece, slot: slot.key }))
   );
-  const outfitColors = sortPiecesLightToDark(outfit);
+  const colorGroups = uniquePieceColors(outfit);
 
   async function handleSave() {
     try {
@@ -136,13 +139,16 @@ export default function OutfitBuilder({ wardrobe, accent, text, background, head
           <p className="mt-2 text-sm opacity-80">Nothing picked yet.</p>
         ) : (
           <>
-            <div className="mt-3 flex h-10 overflow-hidden rounded-md">
-              {outfitColors.map((piece) => (
+            <div className="mt-4">
+              <OutfitPreview pieces={outfit} outline={text} />
+            </div>
+            <div className="mt-4 flex h-10 overflow-hidden rounded-md">
+              {colorGroups.map((group) => (
                 <div
-                  key={piece.name}
+                  key={group.color}
                   className="flex-1"
-                  style={{ backgroundColor: piece.color }}
-                  title={piece.name}
+                  style={{ backgroundColor: group.color }}
+                  title={group.names.join(", ")}
                 />
               ))}
             </div>

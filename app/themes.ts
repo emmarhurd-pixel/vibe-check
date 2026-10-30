@@ -8,15 +8,15 @@ const quicksand = Quicksand({ subsets: ["latin"] });
 
 export const fonts = { inter, playfair, spaceGrotesk, cinzel, quicksand };
 
-export type Piece = { name: string; color: string };
+export type Wardrobe = {
+  tops: Piece[];
+  bottoms: Piece[];
+  outerwear: Piece[];
+  shoes: Piece[];
+  accessories: Piece[];
+};
 
-  export type Wardrobe = {
-    tops: Piece[];
-    bottoms: Piece[];
-    outerwear: Piece[];
-    shoes: Piece[];
-    accessories: Piece[];
-   };
+export type Piece = { name: string; color: string; slot?: keyof Wardrobe };
 
 export type Theme = {
   background: string;
@@ -42,7 +42,6 @@ export const defaultTheme: Theme = {
     "One statement accessory",
   ],
   searches: ["minimal neutral outfit", "casual chic street style", "simple everyday outfit"],
-     
   wardrobe: {
     tops: [
       { name: "White fitted tee", color: "#F5F5F0" },
