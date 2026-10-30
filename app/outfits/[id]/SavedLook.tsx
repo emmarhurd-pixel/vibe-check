@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { getOutfit, type SavedOutfit } from "../../saved-outfits";
-import { formatDate, sortLightToDark, sortPiecesLightToDark } from "../../format";
+import { formatDate, sortLightToDark } from "../../format";
+import ColorStory from "../../ColorStory";
 
 function pinterestSearchUrl(query: string) {
   return `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(query)}`;
@@ -41,7 +42,7 @@ export default function SavedLook() {
   }
 
   const palette = sortLightToDark(outfit.palette);
-  const outfitColors = sortPiecesLightToDark(outfit.pieces);
+  const faintBorder = `color-mix(in srgb, ${outfit.text} 25%, transparent)`;
 
   const rebuild = new URLSearchParams();
   for (const [key, value] of Object.entries({
@@ -103,20 +104,17 @@ export default function SavedLook() {
 
         <div className="mt-8 rounded-lg border-2 p-4" style={{ borderColor: outfit.accent }}>
           <h2 className="text-lg font-semibold">Your outfit</h2>
-          <div className="mt-3 flex h-10 overflow-hidden rounded-md">
-            {outfitColors.map((piece) => (
-              <div
-                key={piece.name}
-                className="flex-1"
-                style={{ backgroundColor: piece.color }}
-                title={piece.name}
-              />
-            ))}
+          <div className="mt-4">
+            <ColorStory pieces={outfit.pieces} text={outfit.text} />
           </div>
-          <ul className="mt-3 space-y-2 text-sm">
+          <ul className="mt-5 space-y-2 text-sm">
             {outfit.pieces.map((piece) => (
-              <li key={piece.name} className="flex items-center justify-between gap-3">
-                <span>{piece.name}</span>
+              <li key={piece.name} className="flex items-center gap-3">
+                <span
+                  className="h-3 w-3 shrink-0 rounded-full border"
+                  style={{ backgroundColor: piece.color, borderColor: faintBorder }}
+                />
+                <span className="flex-1">{piece.name}</span>
                 <a
                   href={pinterestSearchUrl(piece.name)}
                   target="_blank"

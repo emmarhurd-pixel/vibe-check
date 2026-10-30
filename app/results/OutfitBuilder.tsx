@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Piece, Wardrobe } from "../themes";
 import { saveOutfit } from "../saved-outfits";
-import { uniquePieceColors } from "../format";
+import ColorStory from "../ColorStory";
 
 type Slot = { key: keyof Wardrobe; label: string; multiple: boolean };
 
@@ -66,7 +66,6 @@ export default function OutfitBuilder({ wardrobe, accent, text, background, head
       .filter((piece) => picked[slot.key]?.includes(piece.name))
       .map((piece) => ({ ...piece, slot: slot.key }))
   );
-  const colorGroups = uniquePieceColors(outfit);
 
   async function handleSave() {
     try {
@@ -138,20 +137,17 @@ export default function OutfitBuilder({ wardrobe, accent, text, background, head
           <p className="mt-2 text-sm opacity-80">Nothing picked yet.</p>
         ) : (
           <>
-            <div className="mt-4 flex h-10 overflow-hidden rounded-md">
-              {colorGroups.map((group) => (
-                <div
-                  key={group.color}
-                  className="flex-1"
-                  style={{ backgroundColor: group.color }}
-                  title={group.names.join(", ")}
-                />
-              ))}
+            <div className="mt-4">
+              <ColorStory pieces={outfit} text={text} />
             </div>
-            <ul className="mt-3 space-y-2 text-sm">
+            <ul className="mt-5 space-y-2 text-sm">
               {outfit.map((piece) => (
-                <li key={piece.name} className="flex items-center justify-between gap-3">
-                  <span>{piece.name}</span>
+                <li key={piece.name} className="flex items-center gap-3">
+                  <span
+                    className="h-3 w-3 shrink-0 rounded-full border"
+                    style={{ backgroundColor: piece.color, borderColor: faintBorder }}
+                  />
+                  <span className="flex-1">{piece.name}</span>
                   <a
                     href={pinterestSearchUrl(piece.name)}
                     target="_blank"
@@ -164,7 +160,7 @@ export default function OutfitBuilder({ wardrobe, accent, text, background, head
                 </li>
               ))}
             </ul>
-            <div className="mt-4 flex flex-wrap items-center gap-4">
+            <div className="mt-5 flex flex-wrap items-center gap-4">
               <button
                 type="button"
                 onClick={handleSave}

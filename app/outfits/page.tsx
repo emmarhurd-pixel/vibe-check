@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "../supabase";
 import { deleteOutfit, getOutfits, type SavedOutfit } from "../saved-outfits";
-import { formatDate, sortPiecesLightToDark } from "../format";
+import { formatDate } from "../format";
+import ColorStory from "../ColorStory";
 
 export default function OutfitsPage() {
   const [outfits, setOutfits] = useState<SavedOutfit[] | null>(null);
@@ -72,15 +73,8 @@ export default function OutfitsPage() {
                 <p className="text-sm opacity-80">
                   {outfit.eventType} · {outfit.city} · {formatDate(outfit.date)}
                 </p>
-                <div className="mt-3 flex h-8 overflow-hidden rounded-md">
-                  {sortPiecesLightToDark(outfit.pieces).map((piece) => (
-                    <div
-                      key={piece.name}
-                      className="flex-1"
-                      style={{ backgroundColor: piece.color }}
-                      title={piece.name}
-                    />
-                  ))}
+                <div className="mt-3">
+                  <ColorStory pieces={outfit.pieces} text={outfit.text} compact />
                 </div>
                 <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">
                   {outfit.pieces.map((piece) => (
@@ -103,7 +97,7 @@ export default function OutfitsPage() {
         </div>
       )}
 
-      <Link href="/" className="mt-8 inline-block underline">
+      <Link href="/" className="mt-10 inline-block underline">
         ← Back
       </Link>
     </main>
